@@ -8,8 +8,8 @@ import sys
 
 # globals
 DATA_FILE_PATH = "T10I4D100K.dat"
-MIN_SUPPORT = 20
-TEST_LIMIT = 500
+MIN_SUPPORT = 5
+TEST_LIMIT = 50
 
 
 ##########################################
@@ -23,7 +23,6 @@ def convert(filename):
 
     """
     when done testing, use the one line version:
-
        data = [line.rstrip().split(" ") for line in open(filename, 'r')]
        return data
     """
@@ -82,7 +81,8 @@ def filter_transactions(data, filtered_items):
 # MARK: Primary apriori set functions
 #####################################
 
-def get_support(input_item, itemset):
+#change to simply get the support of all items in an itemset
+def get_item_support(input_item, itemset):
     """
      calculates the frequency of an item's elements in an itemset by
      checking each transaction
@@ -120,6 +120,7 @@ def get_support(input_item, itemset):
 
     return support
 
+
 def self_join(itemset, size):
     """
      goes through an itemset and forms unions on each element with the next
@@ -135,34 +136,53 @@ def self_join(itemset, size):
     drop bcd
 
     """
-    itemset = sorted(itemset)
 
     if size == 2:
+
         return set(it.combinations(itemset,2))
     else:
 
-        #store which prefixes (of length size-1) occur
-        prefix_counts = Counter()
+        combos = set()
+        seen = {}
 
-        #store the actual joined tuples
-        joins = set()
-
-        print "size greater than 2"
-        print "INPUT ITEMSET FOR JOINING: {}".format(itemset)
-
+        """
+        initialize the seen dictionary to all falses
+        this is used to avoid unnecessary unions when both items have already been seen
+        """
         for item in itemset:
-            prefix_counts.update(item[:size-2])
+            seen[item] = False
 
-        itemset = filter(lambda item: , itemset)
-        """
-        find all unions of elements
-        if the prefix of that element has a count higher than one
-        essentiall conditional combinations.
-        """
+        for a in itemset:
 
-        print prefix_counts
+            seen[a] = True
 
-    return set()
+            for b in itemset:
+
+                """
+                check if the k-2 elements are the same to
+                check joining compatibility
+                """
+                if a[:size - 2] == b[:size - 2] and a != b:
+
+                    """
+                    when do you actually form the union?
+                    well, you want unique combinations only
+                    you shouldn't have to form the union and add it if both elements have been seen before
+                    """
+
+                    if seen[b] is False:
+
+                        union = set(a).union(set(b))
+
+                        print "A: {} || B: {}".format(a, b)
+                        print "UNION: {}\n".format(union)
+
+                        combos.add(frozenset(union))
+
+                    seen[b] = True
+
+        return combos
+
 
 def prune(current_itemset, previous_itemset):
     """
@@ -182,7 +202,7 @@ def prune(current_itemset, previous_itemset):
     for item in current_itemset:
         subsets = set(it.combinations(item, len(item)-1))
         for subset in subsets:
-            if previous_itemset.issuperset(subset) and not pruned.issuperset(item):
+            if previous_itemset.issuperset(subset):
                 pruned.add(item)
 
     return pruned
@@ -244,13 +264,6 @@ def apriori(data, min_support):
     candidate_count+=1
     current_candidate = generate_candidate_set(current_candidate, candidate_count)
 
-# while len(current_candidate) != 0:
-    #
-    #     current_candidate = generate_candidate_set(current_candidate, candidate_count)
-    #
-    #     # previous_candidate = current_candidate.copy()
-    #
-    # return previous_candidate
 #####################################
 # MARK: MAIN
 #####################################
@@ -264,6 +277,8 @@ if __name__ == '__main__':
 
     # turn the transactions into a 2D array
     transactions = convert(DATA_FILE_PATH)
+
+    print "TRANSACTION SUPPORT: {}".format(get_support(transactions))
 
     # measure the start time
     start_time = time.time()
