@@ -8,8 +8,8 @@ import sys
 
 # globals
 DATA_FILE_PATH = "T10I4D100K.dat"
-MIN_SUPPORT = 5
-TEST_LIMIT = 50
+MIN_SUPPORT = 35
+TEST_LIMIT = 1000
 
 
 ##########################################
@@ -40,9 +40,9 @@ def save_output():
     print "output"
 
 
-################################
-# MARK: Helper methods for speed
-################################
+######################################
+# MARK: Speed / optimization functions
+######################################
 def get_item_count(items):
     """
     takes in a list and returns the amount of times each element appears
@@ -70,55 +70,42 @@ def create_single_frequent_itemset(transactions, min_support):
     return frequent_item_set
 
 
-def filter_transactions(data, filtered_items):
+def filter_transactions(transactions, current_candidate):
     """
     returns a new reference database to check support counts for
-    filtered by removing all of the transactions with infrequent itemsets from the previous candidate set
+    remove transaction if all items have been discarded
     """
+    filtered_transactions = []
+
+    # 1. discard infrequent items
+    # if an item does not occur at least CANDIDATE_COUNT amount of times
+    #  in the current candidate, discard
+
+    # 2. discard transactions if all items are discarded
+
+    return filtered_transactions
+
+
+def get_min_support_itemset(itemset_count, min_support):
+
+    min_support_itemset = set(item for item in itemset_count
+                              if itemset_count[item] >= min_support)
+
+    return min_support_itemset
 
 
 #####################################
 # MARK: Primary apriori set functions
 #####################################
+def get_itemset_support(transactions, itemsets):
 
-#change to simply get the support of all items in an itemset
-def get_item_support(input_item, itemset):
-    """
-     calculates the frequency of an item's elements in an itemset by
-     checking each transaction
+    support_set = Counter()
 
-     EX:
-     item: ABC
-     itemset: {
-        ABCD
-        ABEC
-        ABC
-        BCD
-     }
+    for trans in transactions:
+        subsets = [itemset for itemset in itemsets if itemset <= trans]
+        support_set.update(subsets)
 
-     SUPPORT: 3 {
-      [ABC]D,
-      [AB]E[C],
-      [ABC]
-      }
-    """
-    support = 0
-
-    for item in itemset:
-        """
-        check if each element in the input_item is in the item
-        if it is, update the counter
-        """
-        all_items_found = True
-
-        for sub_item in input_item:
-            if item not in sub_item:
-                all_items_found = False
-
-        if all_items_found:
-            support += 1
-
-    return support
+    return support_set
 
 
 def self_join(itemset, size):
@@ -138,50 +125,35 @@ def self_join(itemset, size):
     """
 
     if size == 2:
-
-        return set(it.combinations(itemset,2))
+        return set(it.combinations(itemset, 2))
     else:
+        new_items = []
+        seen_items = {}
 
-        combos = set()
-        seen = {}
-
-        """
-        initialize the seen dictionary to all falses
-        this is used to avoid unnecessary unions when both items have already been seen
-        """
+        #used to avoid unnecessary unions when both items have already been seen
         for item in itemset:
-            seen[item] = False
+            seen_items[item] = False
 
         for a in itemset:
 
-            seen[a] = True
+            # mark the item as seen
+            seen_items[a] = True
 
             for b in itemset:
 
-                """
-                check if the k-2 elements are the same to
-                check joining compatibility
-                """
+                # check if the k-2 elements are the same to
+                # check joining compatibility
+
                 if a[:size - 2] == b[:size - 2] and a != b:
 
-                    """
-                    when do you actually form the union?
-                    well, you want unique combinations only
-                    you shouldn't have to form the union and add it if both elements have been seen before
-                    """
+                    if seen_items[b] is False:
 
-                    if seen[b] is False:
-
+                        # only form the union if item b hasn't been seen before
                         union = set(a).union(set(b))
+                        new_items.append(tuple(union))
+                        seen_items[b] = True
 
-                        print "A: {} || B: {}".format(a, b)
-                        print "UNION: {}\n".format(union)
-
-                        combos.add(frozenset(union))
-
-                    seen[b] = True
-
-        return combos
+        return set(new_items)
 
 
 def prune(current_itemset, previous_itemset):
@@ -189,80 +161,83 @@ def prune(current_itemset, previous_itemset):
     prunes an itemset by checking subsets
     if subset is infrequent/not in the previous itemset, that element is removed/
     not placed into the new itemset
-
-    returns back a new itemset pruned
-
-    EX:
-    abcd = abc, abd, bcd
-    acde =  || ade  ||, acd
-    ade is not in Lk-1, so acde is pruned out
     """
     pruned = set()
 
+    # print "\n\nPREVIOUS ITEMSET FOR PRUNING: {}".format(previous_itemset)
+
     for item in current_itemset:
         subsets = set(it.combinations(item, len(item)-1))
+
+        # filter out the subsets that are not included in the previous itemset
         for subset in subsets:
-            if previous_itemset.issuperset(subset):
+
+            # for some reason, checking subsets gets funky with elements
+            # with more than 2 elements so have to do some preprcoessing
+
+            if len(item)-1 == 1:
+                subset = set(subset)
+            else:
+                subset = set([subset])
+
+            if subset.issubset(previous_itemset):
                 pruned.add(item)
 
     return pruned
+
 
 def generate_candidate_set(itemset, size):
     """
     creates a new candidate set through self joining and pruning
     """
 
-    # 1: remove all items from itemset that don't meet the min_support
-    supported = set(itemset)
-    print "SUPPORTED: {}".format(supported)
-
-    # 2 : self join on all of the cleaned data
-    joined = self_join(supported, size)
+    # 1: self join on all of the cleaned data
+    joined = self_join(itemset, size)
     print "JOINED LENGTH: {} || SET: {}".format(len(joined), joined)
 
-    # 3: prune the remaining joined data
-    #previous itemset is the input
-    #current itemset is the newly joined set
+    # 2: prune the remaining joined data
+    #   previous itemset is the input
+    #   current itemset is the newly joined set
     pruned = prune(joined, itemset)
-    print "PRUNED LENGTH: {} || SET: {}".format(len(pruned), pruned)
+    print "PRUNED CANDIDATE LENGTH: {} || SET: {}".format(len(pruned), pruned)
 
-    # 4: return the final pruned list as the new candidate set
+    # 3: return the final pruned list as the new candidate set
     return pruned
 
 
-def apriori(data, min_support):
+def apriori(transactions, min_support):
     """
     takes in data as a 2D array and runs the algorithm:
-
-    you are consistently pruning/editing 2 data structures:
-    1. the candidate set
-    2. the original transaction db
-        remove transaction
-
-    CONCEPTUALLY:
-
-    1: CREATE FIRST CANDIDATE SET
-    2(LOOP): CHECK EACH CONSECUTIVE NEW SET
+    1: create first candidate set
+    2: generate new candidate set based on current candidate and increasing candidate count
+    3: keep going until the length of the candidate is 0
     """
 
     # initialize current candidate set to the single frequent item set
-    current_candidate = create_single_frequent_itemset(data, min_support)
-    previous_candidate = set()
+    current_candidate = create_single_frequent_itemset(transactions, min_support)
+    candidate_count = 1
+
+    # filter the db references
+    # new_db = filter_transactions(data, current_candidate)
 
     print "SINGLE FREQUENT ITEMSET LENGTH: {} ||| SET: {}".format(len(current_candidate), current_candidate)
 
-    # filter the db references
-    new_db = filter_transactions(data, current_candidate)
+    while len(current_candidate) != 0:
+        print "\nCANDIDATE NUMBER: {}".format(candidate_count)
 
-    # initialize the candidate_count to 2
-    candidate_count = 2
+        # increment to increase the combination lengths
+        candidate_count += 1
 
-    # now that we have the frequent first frequent item set, we will start our loop
-    current_candidate = generate_candidate_set(current_candidate, candidate_count)
+        # generate the current candidate based on the new count
+        current_candidate = generate_candidate_set(current_candidate, candidate_count)
 
-    print "\n"
-    candidate_count+=1
-    current_candidate = generate_candidate_set(current_candidate, candidate_count)
+        # filtered_candidates = get_itemset_support(transactions, current_candidate)
+
+        # current_candidate = get_min_support_itemset(filtered_candidates, min_support)
+
+        print "\n"
+
+    return current_candidate
 
 #####################################
 # MARK: MAIN
@@ -278,13 +253,13 @@ if __name__ == '__main__':
     # turn the transactions into a 2D array
     transactions = convert(DATA_FILE_PATH)
 
-    print "TRANSACTION SUPPORT: {}".format(get_support(transactions))
-
     # measure the start time
     start_time = time.time()
 
     # run the algorithm
-    apriori(transactions, MIN_SUPPORT)
+    candidate = apriori(transactions, MIN_SUPPORT)
+
+    print "\nFINAL CANDIDATE: {}".format(candidate)
 
     # done!
     print("--- %s seconds ---" % (time.time() - start_time))

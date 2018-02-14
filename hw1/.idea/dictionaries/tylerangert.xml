@@ -2,6 +2,7 @@
   <dictionary name="tylerangert">
     <words>
       <w>apriori</w>
+      <w>itemset</w>
     </words>
   </dictionary>
 </component>
