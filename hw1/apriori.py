@@ -108,32 +108,41 @@ def get_itemset_supports(transactions, itemset, candidate_count):
     """
     returns a counter filled with all items and their support counts
     """
+    print "\nCALCULATING SUPPORT FOR: {} items in {} TRANSACTIONS".format(len(itemset), len(transactions))
     supports = {}
 
-    for item in itemset:
-        supports[str(item)] = 0
+    # for item in itemset:
+    #     supports[str(item)] = 0
+
+    support2 = Counter()
+
+    #current O(transactions * items)
+    #way too slow
 
     for trans in transactions:
 
-        # print "refererence transaction: {}".format(trans)
-        # print "ref itemset: {}".format(itemset)
+        # print trans
+        print "current support len: {}\n".format(len(supports))
 
         for item in itemset:
 
             all_found = True
 
+            # single items
             if candidate_count < 2:
                 if item not in trans:
                     all_found = False
             else:
+                # double items
                 for sub_item in item:
                     if sub_item not in trans and all_found:
-                        # print "subitem {} for item: {} NOT FOUND IN {}".format(sub_item, item, trans)
                         all_found = False
-                    # else:
-                    #     print "item {} found in {}".format(item, trans)
+
             if all_found:
-                supports[str(item)] += 1
+                if str(item) not in supports:
+                    supports[str(item)] = 0
+                else:
+                    supports[str(item)] += 1
 
     return supports
 
@@ -156,13 +165,17 @@ def self_join(itemset, candidate_count):
 
     """
 
-    if candidate_count == 2:
-        return set(it.combinations(itemset, 2))
+    if candidate_count < 3:
+        combos = set(it.combinations(itemset, 2))
+        # for combo in combos:
+        #     print combo
+        return combos
     else:
         new_items = []
         seen_items = {}
 
         #used to avoid unnecessary unions when both items have already been seen
+        print "Itemset length for self join: {}".format(len(itemset))
         for item in itemset:
             seen_items[item] = False
 
@@ -222,7 +235,6 @@ def generate_candidate_set(transactions, min_support, itemset, candidate_count):
     """
     creates a new candidate set through self joining and pruning
     """
-
     joined = self_join(itemset, candidate_count)
     print "JOINED LENGTH: {}".format(len(joined))
 
