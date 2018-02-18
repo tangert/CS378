@@ -387,4 +387,5 @@ if __name__ == '__main__':
     save_output(ALL_CANDIDATES, OUTPUT_FILE)
 
     # done!
+    print "Number of frequent itemsets: {}".format(sum([len(can) for can in ALL_CANDIDATES]))
     print("--- %s seconds ---" % (time.time() - start_time))
