@@ -1,5 +1,6 @@
 from __future__ import division
 import math
+import time
 import sys
 from utils import get_unique_vals, get_counts, get_predictions, LABEL_LOCATION, convert_file
 
@@ -12,6 +13,7 @@ class LeafNode:
     """
     stores the counts of the labels for a given set
     """
+    # store the thing in the leaf
     def __init__(self, rows):
         self.counts = get_counts(rows, LABEL_LOCATION)
         self.predictions = get_predictions(self.counts)
@@ -30,7 +32,6 @@ class DecisionNode:
         self.split = split
         self.branches = branches
 
-
 class Split:
     """
     Stores a given attribute and value for easy access at decision nodes
@@ -44,11 +45,11 @@ class Split:
         """
         checks if a given row's data matches the split criteria
         ex:
-        example row (animal):
+        row (animal):
             tail    fur_color   weight  vegetarian
             yes     brown       100     no
 
-        example split: fur color is brown
+        split: fur color is brown
             check row[fur_color] == brown
         """
         test_value = row[self.attribute]
@@ -64,14 +65,7 @@ def partition_data(data, split):
         based on whether or not they meet the split criteria
     """
 
-    # print "SPLIT: {}".format(split.attribute)
-
     branches = get_unique_vals(data, split.attribute)
-
-    # print "BRANCHES: {}".format(branches)
-
-    # stores the data in the form:
-    # branch item: [list of partitioned data]
     partitioned_data = {}
 
     # initialize the new data dictionary to empty lists
@@ -82,12 +76,6 @@ def partition_data(data, split):
         for branch_value in branches:
             if split.input_is_valid(row, branch_value):
                 partitioned_data[branch_value].append(row)
-
-    # print "new data: {}".format(partitioned_data)
-
-    # for attr in new_data:
-    #     print "Key: {}".format(attr)
-    #     print "data: {}\n".format(new_data[attr])
 
     return partitioned_data
 
@@ -102,59 +90,57 @@ def calc_entropy(data):
     return entropy
 
 
-def calc_info_gain(parent_data, attribute):
+def calc_gain_ratio(parent_data, attribute):
+    """
+     Pseudocode:
+
+     INFO GAIN:
+     Entropy of parent data set - weight average of child entropies
+                                -> sum ( child proportion of parent set * child entropy )
+
+     Calculates reduction in disorder / increase in organization
+
+     SPLIT INFO:
+     sum of child proportions * log(child proportions)
+
+    """
 
     current_split = Split(attribute)
     parent_entropy = calc_entropy(parent_data)
-
     parent_data_count = sum(get_counts(parent_data, LABEL_LOCATION).values())
+    children_data_sets = partition_data(parent_data, current_split)
 
+    # Initialize metrics
     weighted_child_avg = 0
+    split_info = 0
+    
+    for child in children_data_sets:
 
-    # grab all of the child data sets from the current parent and split
-    children = partition_data(parent_data, current_split)
-    # print "children length: {}".format(len(children))
-
-    # calculate the weighted average of the children
-    for child in children:
-
-        child_data = children[child]
+        child_data = children_data_sets[child]
         child_entropy = calc_entropy(child_data)
         child_data_count = sum(get_counts(child_data, LABEL_LOCATION).values())
-
         child_proportion = child_data_count / parent_data_count
-        weighted_child_avg += child_entropy * child_proportion
+
+        split_info -= child_proportion * math.log(child_proportion, 2)
+        weighted_child_avg += child_proportion * child_entropy
 
     info_gain = parent_entropy - weighted_child_avg
 
-    return info_gain
-
-
-def calc_split_info(data):
-    """
-    """
-    predictions = get_predictions(get_counts(data, LABEL_LOCATION))
-    split_info = 1
-
-    for label in predictions:
-        split_info *= -1*predictions[label] * math.log(predictions[label], 2)
-
-    return split_info
-
-
-def calc_gain_ratio(data, attribute):
-
-    to_return = {
-        'info_gain': calc_info_gain(data, attribute),
-        'split_info': calc_split_info(data)
+    # Store info gain, split info, and gain ratio all in one object
+    # initialize with info gain and split info
+    data = {
+        'info_gain': info_gain,
+        'split_info': split_info
     }
 
-    if to_return['split_info'] == 0:
-        to_return['gain_ratio'] = to_return['info_gain']
+    # calculate gain ratio simply from the other two metrics
+    if data['split_info'] == 0:
+        data['gain_ratio'] = 0
     else:
-        to_return['gain_ratio'] = to_return['info_gain'] / to_return['split_info']
+        data['gain_ratio'] = data['info_gain'] / \
+                             data['split_info']
 
-    return to_return
+    return data
 
 
 ############################
@@ -167,6 +153,8 @@ def get_best_split(data):
     """
     max_gain_ratio = 0
 
+    # Initialize the split object in case info gain is zero,
+    # in which case a leaf node will be returned
     best_split = {
         'info_gain': 0,
         'gain_ratio': 0,
@@ -174,14 +162,19 @@ def get_best_split(data):
         'partitioned_data': []
     }
 
+    # Start after the label,
+    # Stop at the length of a sample row in the data set (in this case just the first one)
     for attribute in range(LABEL_LOCATION+1, len(data[0])):
 
+        # each column is an attribute
         split = Split(attribute)
 
-        # each column is an attribute
+        # grab the gain ratio data object
         all_data = calc_gain_ratio(data, attribute)
+
         current_gain_ratio = all_data['gain_ratio']
 
+        # find the max gain ratio
         if current_gain_ratio > max_gain_ratio:
 
             max_gain_ratio = current_gain_ratio
@@ -222,24 +215,21 @@ def build_tree(data):
     partitioned_data = best_split['partitioned_data']
     print "partitioned data length: {}".format(len(partitioned_data))
 
-
-    for data_class in partitioned_data:
-        print "size of class {}: {}".format(data_class, len(partitioned_data[data_class]))
-
     branches = []
+
+    print "all classes: "
+    for data_class in partitioned_data:
+        print data_class
 
     for data_class in partitioned_data:
         branched_data = partitioned_data[data_class]
         branch_tree = build_tree(branched_data)
         branches.append(branch_tree)
 
-    print "decision node!"
     return DecisionNode(best_split, branches)
 
-def print_tree(node, spacing=""):
-    """World's most elegant tree printing function."""
 
-    # Base case: we've reached a leaf
+def print_tree(node, spacing=""):
     if isinstance(node, LeafNode):
         print spacing + "Counts for leaf: ", node.counts
         return
@@ -250,6 +240,11 @@ def print_tree(node, spacing=""):
     for branch in node.branches:
         print_tree(branch, spacing + "   ")
 
+
+def test_data(data, tree):
+    print "testing"
+
+
 if __name__ == '__main__':
     print "Running c4.5 to build a decision tree."
 
@@ -258,11 +253,21 @@ if __name__ == '__main__':
     1. Traning dataset file
     2. Test dataset file
     3. Output file
+
+    Derek, if you're reading this, I hope you appreciate how readable my code is.
+    Also ur handsome.
     """
 
-    FILE_PATH = "mushroom.training.txt"
-    data = convert_file(FILE_PATH)
+    TRAINING_FILE_PATH = "mushroom.training.txt"
+    training_data = convert_file(TRAINING_FILE_PATH)
 
     # training
-    tree = build_tree(data)
+    start_time = time.time()
+    tree = build_tree(training_data)
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    print "\n"
     print_tree(tree)
+
+    TESTING_FILE_PATH = "mushroom.test.txt"
+    test_data = convert_file(TESTING_FILE_PATH)
