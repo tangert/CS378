@@ -267,6 +267,7 @@ def classify_data_set(data, trained_tree):
 
     return classified_data
 
+
 def classify_row(row, current_node):
     # return random.choice(['e','p'])
 
@@ -295,7 +296,6 @@ def classify_row(row, current_node):
         # pick the next decision node to go down
         for decision in decisions:
             leaves = [branch for branch in decision.branches if isinstance(branch, LeafNode)]
-
             if leaves is not None:
                 leaf_values = [leaf.data_class for leaf in leaves]
                 if test_value in leaf_values:
@@ -315,6 +315,12 @@ def test_accuracy(classified_data, test_data):
     return correct_count / len(test_data)
 
 
+def save_output(data, accuracy, file_name):
+    output = open("{}.txt".format(file_name), "w+")
+    output.write("Decision tree accuracy: {}%\n".format(accuracy*100))
+    for row in data:
+        row[0] = "Predicted label: {}".format(row[0])
+        output.write("{}\n".format(row))
 
 if __name__ == '__main__':
     print "Running c4.5 to build a decision tree."
@@ -329,7 +335,10 @@ if __name__ == '__main__':
     Also ur handsome.
     """
 
-    TRAINING_FILE_PATH = "mushroom.training.txt"
+    TRAINING_FILE_PATH = sys.argv[1]
+    TESTING_FILE_PATH = sys.argv[2]
+    OUTPUT_FILE = sys.argv[3]
+
     training_data = convert_file(TRAINING_FILE_PATH)
 
     # training
@@ -340,11 +349,13 @@ if __name__ == '__main__':
     print "\n"
     print_tree(trained_tree)
 
-    TESTING_FILE_PATH = "mushroom.test.txt"
     test_data = convert_file(TESTING_FILE_PATH)
 
     # classify the test data
     predicted = classify_data_set(test_data, trained_tree)
     accuracy = test_accuracy(predicted, test_data)
 
-    print "\n Accuracy: {}%".format(accuracy*100)
+    print "\nAccuracy: {}%".format(accuracy*100)
+
+    # write the output file
+    save_output(predicted, accuracy, OUTPUT_FILE)
