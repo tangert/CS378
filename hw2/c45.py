@@ -1,6 +1,7 @@
 from __future__ import division
 import math
 import time
+import random
 import sys
 from utils import get_unique_vals, get_counts, get_predictions, LABEL_LOCATION, convert_file
 
@@ -17,6 +18,10 @@ class LeafNode:
     def __init__(self, rows):
         self.counts = get_counts(rows, LABEL_LOCATION)
         self.predictions = get_predictions(self.counts)
+        self.data_class = None
+
+    def assign_data_class(self, data_class):
+        self.data_class = data_class
 
 
 class DecisionNode:
@@ -31,6 +36,7 @@ class DecisionNode:
         # Stores the subtree
         self.split = split
         self.branches = branches
+
 
 class Split:
     """
@@ -149,7 +155,8 @@ def calc_gain_ratio(parent_data, attribute):
 
 def get_best_split(data):
     """
-        returns a split object which contains the
+        returns a split object which contains the info gain, gain ratio, split object, and
+        relevant partitioned data.
     """
     max_gain_ratio = 0
 
@@ -202,47 +209,111 @@ def build_tree(data):
 
      4. Return decision node
     """
+
+    # First get the best split to evaluate
     best_split = get_best_split(data)
 
     # BASE CASE
+    # If the info gain is zero, no further splitting necessary
     if best_split['info_gain'] == 0:
-        print "leaf node!"
         return LeafNode(data)
 
-    print "\nbest split: {}".format(best_split['split'].attribute)
+    print "\nBest split: {}".format(best_split['split'].attribute)
 
-    #replace with data branches
     partitioned_data = best_split['partitioned_data']
-    print "partitioned data length: {}".format(len(partitioned_data))
-
     branches = []
-
-    print "all classes: "
-    for data_class in partitioned_data:
-        print data_class
 
     for data_class in partitioned_data:
         branched_data = partitioned_data[data_class]
         branch_tree = build_tree(branched_data)
+
+        if isinstance(branch_tree, LeafNode):
+            #store the relevant data class in the leaf node
+            branch_tree.data_class = data_class
+
         branches.append(branch_tree)
 
-    return DecisionNode(best_split, branches)
+    # Return a decision node once all the leaves return
+    return DecisionNode(best_split['split'], branches)
 
 
 def print_tree(node, spacing=""):
     if isinstance(node, LeafNode):
-        print spacing + "Counts for leaf: ", node.counts
+        print spacing + "Leaf {} prediction: {}".format(node.data_class, node.predictions)
         return
 
     # Print the decision node
-    print spacing + "---> Splitting on: ", str(node.split['split'].attribute)
+    print spacing + "---> Splitting on: ", str(node.split.attribute)
 
     for branch in node.branches:
         print_tree(branch, spacing + "   ")
 
 
-def test_data(data, tree):
-    print "testing"
+def classify_data_set(data, trained_tree):
+    classified_data = []
+
+    for row in data:
+        # get the row without the first label
+        to_classify = row[1:]
+
+        # get the prediction for the row
+        prediction = classify_row(to_classify, trained_tree)
+
+        # append the prediction to the unlabeled row
+        to_classify.insert(0, prediction)
+
+        # append to the classified data
+        classified_data.append(to_classify)
+
+    return classified_data
+
+def classify_row(row, current_node):
+    # return random.choice(['e','p'])
+
+    # keep traversing until you hit a leaf, which has no branches
+    next_node = None
+    # since the label was removed, have to test everything one back
+    test_value = row[current_node.split.attribute-1]
+
+    # while you are at a decision node
+    while current_node.branches is not None:
+
+        # go through each of the branches and test which fits
+        # go through each of the leaf nodes
+
+        leaves = [branch for branch in current_node.branches if isinstance(branch, LeafNode)]
+        decisions = [branch for branch in current_node.branches if isinstance(branch, DecisionNode)]
+
+        # return early if you find a leaf
+        if leaves is not None:
+            for leaf in leaves:
+                if leaf.data_class == test_value:
+                    prediction = max(leaf.predictions.keys(), key=lambda k: leaf.predictions[k])
+                    return prediction
+
+        # couldn't find a leaf, so go down the decisions
+        # pick the next decision node to go down
+        for decision in decisions:
+            leaves = [branch for branch in decision.branches if isinstance(branch, LeafNode)]
+
+            if leaves is not None:
+                leaf_values = [leaf.data_class for leaf in leaves]
+                if test_value in leaf_values:
+                    next_node = decision
+
+        # else go to next decision node
+        current_node = next_node
+
+
+def test_accuracy(classified_data, test_data):
+    correct_count = 0
+
+    for i in range(len(test_data)):
+        if classified_data[i][LABEL_LOCATION] == test_data[i][LABEL_LOCATION]:
+            correct_count += 1
+
+    return correct_count / len(test_data)
+
 
 
 if __name__ == '__main__':
@@ -263,11 +334,17 @@ if __name__ == '__main__':
 
     # training
     start_time = time.time()
-    tree = build_tree(training_data)
+    trained_tree = build_tree(training_data)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     print "\n"
-    print_tree(tree)
+    print_tree(trained_tree)
 
     TESTING_FILE_PATH = "mushroom.test.txt"
     test_data = convert_file(TESTING_FILE_PATH)
+
+    # classify the test data
+    predicted = classify_data_set(test_data, trained_tree)
+    accuracy = test_accuracy(predicted, test_data)
+
+    print "\n Accuracy: {}%".format(accuracy*100)
