@@ -1,5 +1,6 @@
 from __future__ import division
 from collections import Counter
+import math
 
 # MARK: Globals
 # adapt this to wherever the label is inside the input file
@@ -58,3 +59,13 @@ def get_predictions(counts):
         predictions[class_label] = counts[class_label]/total_count
 
     return predictions
+
+
+def mean(nums):
+    return sum(nums) / float(len(nums))
+
+
+def standard_deviation(nums):
+    average = mean(nums)
+    variance = sum([pow(x - average, 2) for x in nums]) / float(len(nums) - 1)
+    return math.sqrt(variance)
