@@ -325,16 +325,6 @@ def save_output(data, accuracy, file_name):
 if __name__ == '__main__':
     print "Running c4.5 to build a decision tree."
 
-    """
-    3 command line parameters:
-    1. Traning dataset file
-    2. Test dataset file
-    3. Output file
-
-    Derek, if you're reading this, I hope you appreciate how readable my code is.
-    Also ur handsome.
-    """
-
     TRAINING_FILE_PATH = sys.argv[1]
     TESTING_FILE_PATH = sys.argv[2]
     OUTPUT_FILE = sys.argv[3]
