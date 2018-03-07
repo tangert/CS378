@@ -15,6 +15,9 @@ def get_label_counts(data):
 
 def get_evidence_data(label_counts, label_probabilities, data_length):
 
+    """
+     retrieves the probability and counts of each attribute regardless of p/e
+    """
     evidence_probabilities = {}
     evidence_counts = {}
 
@@ -45,6 +48,10 @@ def get_evidence_data(label_counts, label_probabilities, data_length):
 
 def train_naive_bayes(training_data):
 
+    """
+     returns all necessary statistical data required to classify a new data point
+     with naive bayes
+    """
     data_length = len(training_data)
     label_counts = get_label_counts(training_data)
 
@@ -115,7 +122,6 @@ def train_naive_bayes(training_data):
 
 
 def classify_data_set(label_probabilities, column_probabilities, evidence_probabilities, data):
-
     classified_data = []
 
     for row in data:
