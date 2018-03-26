@@ -35,10 +35,12 @@ class DecisionNode:
     """
     def __init__(self,
                  split,
+                 gain_ratio,
                  branches):
 
         # Stores the subtree
         self.split = split
+        self.gain_ratio = gain_ratio
         self.branches = branches
 
 
@@ -150,6 +152,8 @@ def calc_gain_ratio(parent_data, attribute):
         data['gain_ratio'] = data['info_gain'] / \
                              data['split_info']
 
+    print "Calculating gain ratio for {}: {}".format(attribute, data['gain_ratio'])
+
     return data
 
 
@@ -238,7 +242,7 @@ def build_tree(data):
         branches.append(branch_tree)
 
     # Return a decision node once all the leaves return
-    return DecisionNode(best_split['split'], branches)
+    return DecisionNode(best_split['split'], best_split['gain_ratio'], branches)
 
 
 def print_tree(node, spacing=""):
@@ -247,7 +251,7 @@ def print_tree(node, spacing=""):
         return
 
     # Print the decision node
-    print spacing + "---> Splitting on: ", str(node.split.attribute)
+    print spacing + "---> Splitting on: {} | GAIN RATIO: {}".format(str(node.split.attribute), str(node.gain_ratio))
 
     for branch in node.branches:
         print_tree(branch, spacing + "   ")
