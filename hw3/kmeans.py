@@ -1,6 +1,5 @@
 from utils import convert_file, LABEL_LOCATION, DataPoint, Centroid
 import random
-import random
 import math
 import sys
 
@@ -89,8 +88,6 @@ def k_means(k, data):
 
     while not converged:
 
-        print "ITERATIONS: ", iterations
-
         # Keeps track if all of the centroids are the same for each point
         all_same = True
 
@@ -115,8 +112,8 @@ def k_means(k, data):
                 all_same = False
 
         # 2. Calculate new centroid locations
-
         for centroid in centroids:
+
             current_points = [point for point in data_points if point.current_centroid is centroid]
             current_point_data = [point.data for point in current_points]
             new_location = euclidean_average(current_point_data)
@@ -149,16 +146,11 @@ if __name__ == '__main__':
     centroids, results, iterations = k_means(3, numerized_data)
 
     for i in range(len(data)):
-        print "\ncorrect label: ", data[i][-1]
         r = results[i]
+        print "\ncorrect label: ", data[i][-1]
         print "data: {} | centroid: {}".format(r.data, r.current_centroid.cluster)
         print "prev: {} | current: {}".format(r.previous_centroid.cluster, r.current_centroid.cluster)
 
     print "\nall centroids: ", [centroid.data for centroid in centroids]
-
-    for centroid in centroids:
-        size = len([point for point in results if point.current_centroid is centroid])
-        print "centroid {} size: {}".format(centroid.cluster, size)
-
-    print "\nSSE: ", calc_sse(centroids, results)
+    print "SSE: ", calc_sse(centroids, results)
     print "total iterations: ", iterations
