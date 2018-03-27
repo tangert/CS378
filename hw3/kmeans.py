@@ -1,4 +1,4 @@
-from utils import convert_file, LABEL_LOCATION, DataPoint, Centroid
+from utils import convert_file, save_output, LABEL_LOCATION, DataPoint, Centroid
 import random
 import math
 import sys
@@ -24,7 +24,7 @@ def calc_distance(point1, point2):
     return total_dist
 
 
-def euclidean_average(data_points):
+def calc_euclidean_average(data_points):
 
     sums = {}
     avgs = {}
@@ -45,7 +45,6 @@ def euclidean_average(data_points):
 def calc_sse(centroids, data):
 
     # stores each cluster's squared sums
-    # ex:
     cluster_difs = {}
 
     # Initialze cluster difs
@@ -61,11 +60,8 @@ def calc_sse(centroids, data):
         # calculate euclidean distance between this point and the cluster
         distance = calc_distance(centroid.data, point.data)
 
-        # square the difference / error
-        squared_dist = pow(distance, 2)
-
         # add the squared dist to the cluster's sum
-        cluster_difs[centroid.cluster] += squared_dist
+        cluster_difs[centroid.cluster] += pow(distance, 2)
 
     sse = sum(cluster_difs.values())
 
@@ -80,16 +76,13 @@ def k_means(k, data):
     # 1.b. convert the raw data in data point objects that track their current/previous centroid
     data_points = [DataPoint(point) for point in data]
 
-    print "Initial centroids: ", [centroid.data for centroid in centroids]
-
     # 2. Iterate and calculate
-    converged = False
     iterations = 0
 
-    while not converged:
+    while True:
 
         # Keeps track if all of the centroids are the same for each point
-        all_same = True
+        all_centroids_same = True
 
         # 1. Assign the closest centroid to each point
         for point in data_points:
@@ -99,7 +92,6 @@ def k_means(k, data):
 
             for centroid in centroids:
                 dist = calc_distance(point.data, centroid.data)
-
                 if dist <= min_dist:
                     min_dist = dist
                     closest_centroid = centroid
@@ -109,19 +101,20 @@ def k_means(k, data):
             point.current_centroid = closest_centroid
 
             if point.current_centroid is not point.previous_centroid:
-                all_same = False
+                all_centroids_same = False
+
+        # If you get past all of the cases and each centroid is the same as the previous, you have converged
+        if all_centroids_same:
+            print "All centroids same! Converging!"
+            break
+
+        print "Iteration {} : calculating new centroids".format(iterations)
 
         # 2. Calculate new centroid locations
         for centroid in centroids:
-
-            current_points = [point for point in data_points if point.current_centroid is centroid]
-            current_point_data = [point.data for point in current_points]
-            new_location = euclidean_average(current_point_data)
+            current_point_data = [point.data for point in data_points if point.current_centroid is centroid]
+            new_location = calc_euclidean_average(current_point_data)
             centroid.data = new_location
-
-        # If you get past all of the cases and each centroid is the same as the previous, you have converged
-        if all_same:
-            converged = True
 
         iterations += 1
 
@@ -129,12 +122,16 @@ def k_means(k, data):
 
 
 if __name__ == '__main__':
-    print "running k means!"
 
     # SYSTEM INPUT VARIABLES
+    DATA_FILE_PATH = sys.argv[1]
+    INPUT_K = int(sys.argv[2])
+    OUTPUT_FILE = sys.argv[3]
+
+    print "Running k means on {}!".format(DATA_FILE_PATH)
 
     # Convert original data into a 2d array
-    data = convert_file("iris.data.txt")
+    data = convert_file(DATA_FILE_PATH)
 
     # Remove the label from each data
     unlabeled_data = [row[:LABEL_LOCATION] for row in data]
@@ -143,14 +140,16 @@ if __name__ == '__main__':
     numerized_data = [[float(i) for i in row] for row in unlabeled_data]
 
     # Run k means on the numerized data
-    centroids, results, iterations = k_means(3, numerized_data)
+    centroids, results, iterations = k_means(INPUT_K, numerized_data)
 
-    for i in range(len(data)):
-        r = results[i]
-        print "\ncorrect label: ", data[i][-1]
-        print "data: {} | centroid: {}".format(r.data, r.current_centroid.cluster)
-        print "prev: {} | current: {}".format(r.previous_centroid.cluster, r.current_centroid.cluster)
+    # Grab the labels in order
+    predicted_labels = [r.current_centroid.cluster for r in results]
 
-    print "\nall centroids: ", [centroid.data for centroid in centroids]
-    print "SSE: ", calc_sse(centroids, results)
+    # save the output
+    save_output(predicted_labels, OUTPUT_FILE)
+
+    print "\nall centroids:"
+    for centroid in [centroid.data for centroid in centroids]:
+        print centroid
+    print "\nSSE: ", calc_sse(centroids, results)
     print "total iterations: ", iterations

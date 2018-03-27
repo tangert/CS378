@@ -8,9 +8,18 @@ def convert_file(filepath):
     data = []
 
     for line in open("{}".format(filepath), 'r'):
-        data.append(line.rstrip().split(','))
+        if ',' in line:
+            data.append(line.rstrip().split(','))
+        else:
+            data.append(line.rstrip().split())
 
     return data
+
+
+def save_output(data, file_name):
+    output = open("{}.txt".format(file_name), "w+")
+    for row in data:
+        output.write("{}\n".format(row))
 
 
 # Data point object that keeps track of the current/previous centroid
