@@ -1,3 +1,7 @@
+# THIS CODE WAS WRITTEN BY ME WITHOUT ANY ASSISTANCE FROM OTHER STUDENTS.
+# I REFERENCED THE WIKIPEDIA PAGE FOR THE ALGORITHIM AS WELL AS SOME CONCEPTUAL TUTORIALS
+# -TYLER ANGERT
+
 from utils import convert_file, save_output, LABEL_LOCATION, DataPoint, Centroid
 import random
 import math
@@ -94,7 +98,7 @@ def k_means(k, data):
             c = Centroid(d, i)
             centroids.append(c)
 
-    print "iInitial centroids: {}".format([c.data for c in centroids])
+    print "Initial centroids: {}".format([c.data for c in centroids])
 
     # 1.b. convert the raw data in data point objects that track their current/previous centroid
     data_points = [DataPoint(point) for point in data]
@@ -163,10 +167,11 @@ if __name__ == '__main__':
     data = convert_file(DATA_FILE_PATH)
 
     # Remove the label from each data
-    unlabeled_data = [row[:LABEL_LOCATION] for row in data]
+    # only for use with the original file
+    # unlabeled_data = [row[:LABEL_LOCATION] for row in data]
 
     # Converts each string data element into a float, removes any empty rows
-    numerized_data = filter(lambda x: len(x) > 0, [[float(i) for i in row] for row in unlabeled_data])
+    numerized_data = filter(lambda x: len(x) > 0, [[float(i) for i in row] for row in data])
 
     # store sse's for post analyses
     print "\nTESTING ON K = {}".format(INPUT_K)
