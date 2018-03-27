@@ -133,7 +133,7 @@ def k_means(k, data):
                 all_centroids_same = False
             else:
                 if point.current_centroid is not point.previous_centroid \
-                        and point.current_centroid.data != point.previous_centroid.data:
+                        or point.current_centroid.data != point.previous_centroid.data:
                     all_centroids_same = False
 
         # If you get past all of the cases and each centroid is the same as the previous, you have converged
