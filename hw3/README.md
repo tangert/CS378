@@ -8,7 +8,7 @@ This project implements k-means clustering algorithm in pure Python.
 
 On a computer with python installed: 
 
-run `python kmeans.py INPUT_DATA_SET K_VALUE OUTPUT_FILE`
+run `python kmeans.py INPUT_DATA_SET K_VALUE OUTPUT_FILE`\
 ex: `python kmeans.py "iris.data.txt" 3 "iris-results"`
 
 ## Notes
