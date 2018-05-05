@@ -7,7 +7,6 @@ import random
 import math
 import sys
 
-
 def calc_distance(point1, point2):
 
     """
@@ -168,10 +167,10 @@ if __name__ == '__main__':
 
     # Remove the label from each data
     # only for use with the original file
-    # unlabeled_data = [row[:LABEL_LOCATION] for row in data]
+    unlabeled_data = [row[:LABEL_LOCATION] for row in data]
 
     # Converts each string data element into a float, removes any empty rows
-    numerized_data = filter(lambda x: len(x) > 0, [[float(i) for i in row] for row in data])
+    numerized_data = filter(lambda x: len(x) > 0, [[float(i) for i in row] for row in unlabeled_data])
 
     # store sse's for post analyses
     print "\nTESTING ON K = {}".format(INPUT_K)
